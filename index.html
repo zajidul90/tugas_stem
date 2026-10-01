@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Desain Ruang Karya Impian 3D - Assemblr Edu Simulator</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- OrbitControls -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0f172a;
+            user-select: none;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        /* Annotation Pin styling */
+        .pin-marker {
+            position: absolute;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(8px);
+            border: 2px solid #f59e0b;
+            color: #ffffff;
+            padding: 6px 12px;
+            border-radius: 9999px;
+            font-size: 13px;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+            pointer-events: auto;
+            z-index: 10;
+        }
+        .pin-marker:hover {
+            transform: scale(1.1) translate(-50%, -50%);
+            border-color: #fbbf24;
+            background: #1e293b;
+            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.6);
+        }
+        .pin-icon {
+            width: 22px;
+            height: 22px;
+            background: #f59e0b;
+            color: #0f172a;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 12px;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3b82f6;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="text-slate-100">
+
+    <!-- 3D Canvas Container -->
+    <div id="canvas-container"></div>
+
+    <!-- HTML Overlay Markers for Interactive Pins -->
+    <div id="pins-overlay" class="absolute inset-0 pointer-events-none overflow-hidden">
+        <!-- Pin 1: Meja Eksperimen -->
+        <div id="pin-1" class="pin-marker" style="transform: translate(-50%, -50%);">
+            <div class="pin-icon">i</div>
+            <span>Meja Eksperimen</span>
+        </div>
+        <!-- Pin 2: Area Kolaborasi -->
+        <div id="pin-2" class="pin-marker" style="transform: translate(-50%, -50%);">
+            <div class="pin-icon">i</div>
+            <span>Area Kolaborasi</span>
+        </div>
+        <!-- Pin 3: Lemari Penyimpanan -->
+        <div id="pin-3" class="pin-marker" style="transform: translate(-50%, -50%);">
+            <div class="pin-icon">i</div>
+            <span>Lemari Penyimpanan</span>
+        </div>
+        <!-- Pin 4: Troli STEM Portabel -->
+        <div id="pin-4" class="pin-marker" style="transform: translate(-50%, -50%);">
+            <div class="pin-icon">i</div>
+            <span>Troli Karya Portabel</span>
+        </div>
+    </div>
+
+    <!-- UI Overlay Header -->
+    <header class="absolute top-4 left-4 right-4 flex flex-wrap justify-between items-center pointer-events-auto z-20 gap-3">
+        <div class="bg-slate-900/90 backdrop-blur-md px-4 py-3 rounded-2xl border border-slate-700/60 shadow-xl flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-yellow-400 flex items-center justify-center text-slate-950 font-black shadow-lg shadow-amber-500/20">
+                3D
+            </div>
+            <div>
+                <div class="flex items-center gap-2">
+                    <h1 class="font-bold text-base md:text-lg text-white">STEM Makerspace Impian</h1>
+                    <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Assemblr Edu 3D</span>
+                </div>
+                <p class="text-xs text-slate-400">Desain Ruang Karya Interaktif & Simulasi Alur STEM 5M</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <button id="btn-tour" onclick="toggleAutoTour()" class="bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold px-3 py-2.5 rounded-xl shadow-lg shadow-amber-600/30 text-xs md:text-sm flex items-center gap-2 transition-all active:scale-95">
+                <i data-lucide="play-circle" class="w-4 h-4"></i>
+                <span id="tour-btn-text">Tour Otomatis</span>
+            </button>
+            <button id="btn-guide" class="bg-blue-600 hover:bg-blue-500 text-white font-medium px-4 py-2.5 rounded-xl shadow-lg shadow-blue-600/30 text-xs md:text-sm flex items-center gap-2 transition-all active:scale-95">
+                <i data-lucide="book-open" class="w-4 h-4"></i>
+                <span>Panduan Assemblr Edu</span>
+            </button>
+            <button id="btn-reset-cam" class="bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700 font-medium px-3 py-2.5 rounded-xl shadow-lg text-xs md:text-sm flex items-center gap-2 transition-all active:scale-95">
+                <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                <span class="hidden sm:inline">Reset Kamera</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Bottom Controls Bar (Camera Presets & Interactive Animations) -->
+    <div class="absolute bottom-5 left-1/2 -translate-x-1/2 pointer-events-auto z-20 w-[94%] max-w-3xl">
+        <div class="bg-slate-900/95 backdrop-blur-md p-2 rounded-2xl border border-slate-700/80 shadow-2xl flex flex-col gap-2">
+            <div class="flex items-center justify-between gap-1 overflow-x-auto pb-1">
+                <button onclick="focusArea('overview')" class="flex-1 min-w-[85px] py-2 px-2.5 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-medium transition flex flex-col items-center gap-1 active:scale-95">
+                    <i data-lucide="eye" class="w-4 h-4 text-sky-400"></i>
+                    <span>Overview</span>
+                </button>
+                <button onclick="focusArea('meja')" class="flex-1 min-w-[85px] py-2 px-2.5 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-medium transition flex flex-col items-center gap-1 active:scale-95">
+                    <i data-lucide="flask-conical" class="w-4 h-4 text-amber-400"></i>
+                    <span>Eksperimen</span>
+                </button>
+                <button onclick="focusArea('kolaborasi')" class="flex-1 min-w-[85px] py-2 px-2.5 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-medium transition flex flex-col items-center gap-1 active:scale-95">
+                    <i data-lucide="users" class="w-4 h-4 text-emerald-400"></i>
+                    <span>Kolaborasi</span>
+                </button>
+                <button onclick="focusArea('lemari')" class="flex-1 min-w-[85px] py-2 px-2.5 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-medium transition flex flex-col items-center gap-1 active:scale-95">
+                    <i data-lucide="box" class="w-4 h-4 text-purple-400"></i>
+                    <span>Storage</span>
+                </button>
+                <button onclick="focusArea('troli')" class="flex-1 min-w-[85px] py-2 px-2.5 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-medium transition flex flex-col items-center gap-1 active:scale-95">
+                    <i data-lucide="shopping-bag" class="w-4 h-4 text-rose-400"></i>
+                    <span>Troli Portabel</span>
+                </button>
+            </div>
+
+            <!-- Action Animation Triggers -->
+            <div class="flex items-center justify-center gap-2 pt-1 border-t border-slate-800 text-xs">
+                <button onclick="triggerTrolleyMove()" class="bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition">
+                    <i data-lucide="truck" class="w-3.5 h-3.5"></i>
+                    <span>Jalankan Troli</span>
+                </button>
+                <button onclick="toggleCabinetDoors()" class="bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition">
+                    <i data-lucide="door-open" class="w-3.5 h-3.5"></i>
+                    <span id="cabinet-btn-text">Buka Lemari</span>
+                </button>
+                <button onclick="toggleWaterFlow()" class="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition">
+                    <i data-lucide="droplet" class="w-3.5 h-3.5"></i>
+                    <span id="water-btn-text">Simulasi Air Drip</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Side Detail Panel (Modal for Pin Information) -->
+    <aside id="info-drawer" class="fixed top-0 right-0 h-full w-full sm:w-96 bg-slate-900/95 backdrop-blur-xl border-l border-slate-800 p-6 z-30 shadow-2xl transition-transform duration-300 transform translate-x-full overflow-y-auto pointer-events-auto">
+        <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+            <div class="flex items-center gap-2">
+                <span id="drawer-badge" class="w-3 h-3 rounded-full bg-amber-500"></span>
+                <h2 id="drawer-title" class="font-bold text-lg text-white">Detail Area</h2>
+            </div>
+            <button id="btn-close-drawer" class="p-2 rounded-lg bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+        </div>
+
+        <div class="mt-5 space-y-6">
+            <div>
+                <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Deskripsi & Fungsi</h3>
+                <p id="drawer-desc" class="text-sm text-slate-300 leading-relaxed">
+                    Pilih salah satu objek atau pin untuk melihat detail area.
+                </p>
+            </div>
+
+            <div class="bg-slate-800/60 rounded-xl p-4 border border-slate-700/50">
+                <h3 class="text-xs font-semibold uppercase tracking-wider text-amber-400 mb-2 flex items-center gap-1.5">
+                    <i data-lucide="sparkles" class="w-4 h-4"></i> Integrasi STEM 5M
+                </h3>
+                <p id="drawer-stem" class="text-xs text-slate-300 leading-relaxed">
+                    -
+                </p>
+            </div>
+
+            <div>
+                <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Aset 3D Assemblr Edu Terkait</h3>
+                <ul id="drawer-assets" class="space-y-2 text-xs text-slate-300">
+                    <!-- Populated dynamically -->
+                </ul>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Modal: Assemblr Edu Blueprint & Tutorial -->
+    <div id="modal-guide" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-40 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+            <div class="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                        <i data-lucide="layers" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-lg text-white">Panduan Perakitan Assemblr Edu</h3>
+                        <p class="text-xs text-slate-400">Langkah menyusun Ruang Karya 3D pada Assemblr Studio / App</p>
+                    </div>
+                </div>
+                <button id="btn-close-modal" class="p-2 rounded-lg bg-slate-800 text-slate-400 hover:text-white transition">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="p-6 overflow-y-auto space-y-6 text-sm text-slate-300">
+                <div class="space-y-3">
+                    <h4 class="font-semibold text-white flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold">1</span>
+                        Langkah Pembuatan Proyek Baru
+                    </h4>
+                    <ol class="list-decimal list-inside space-y-1 text-xs text-slate-400 ml-8 leading-relaxed">
+                        <li>Buka aplikasi <b>Assemblr Edu</b> (iOS/Android) atau akses <b>Assemblr Studio Web</b> di browser.</li>
+                        <li>Klik tombol <b>"+" (Create New Project)</b> dan beri nama <code>STEM Makerspace Impian</code>.</li>
+                        <li>Atur status visibilitas proyek menjadi <b>PUBLIC</b> agar dapat diakses publik.</li>
+                    </ol>
+                </div>
+
+                <div class="space-y-3">
+                    <h4 class="font-semibold text-white flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold">2</span>
+                        Pencarian Aset di 3D Library Assemblr
+                    </h4>
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2 text-xs">
+                        <p class="text-amber-400 font-semibold">Kata Kunci Aset 3D (Search Terms):</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-300">
+                            <div>• <b>Meja Eksperimen:</b> <i>Lab Table, Science Desk, Microscope, Beaker, Flask</i></div>
+                            <div>• <b>Kolaborasi:</b> <i>Office Desk, Computer, Monitor, Whiteboard, Chair</i></div>
+                            <div>• <b>Penyimpanan:</b> <i>Wooden Cabinet, Storage Shelf, Storage Box</i></div>
+                            <div>• <b>Portabel:</b> <i>Utility Cart, Wooden Box, Tools Set</i></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <h4 class="font-semibold text-white flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold">3</span>
+                        Menambahkan Pin Anotasi Interaktif (i)
+                    </h4>
+                    <p class="text-xs text-slate-400 ml-8 leading-relaxed">
+                        Gunakan tombol <b>Annotation (T / +)</b> pada Assemblr Edu untuk menempatkan 3 Pin Utama:
+                        <br><b class="text-amber-400">Pin 1:</b> <code>Meja Eksperimen</code> | <b class="text-emerald-400">Pin 2:</b> <code>Area Kolaborasi</code> | <b class="text-purple-400">Pin 3:</b> <code>Lemari Penyimpanan</code>.
+                    </p>
+                </div>
+
+                <div class="bg-blue-950/40 border border-blue-800/50 rounded-xl p-4 flex items-start gap-3 text-xs text-blue-200">
+                    <i data-lucide="info" class="w-5 h-5 text-blue-400 shrink-0 mt-0.5"></i>
+                    <span><b>Tips Penilaian:</b> Setelah proyek Assemblr Edu selesai, klik <b>Publish / Share</b>, unduh <b>QR Code Proyek</b>, lalu tempelkan pada Lembar Laporan Aksi Eksperimen Formula 5 Anda!</span>
+                </div>
+            </div>
+
+            <div class="p-4 border-t border-slate-800 bg-slate-900/50 flex justify-end">
+                <button id="btn-close-modal-2" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-xl text-xs font-semibold transition">
+                    Mengerti, Tutup
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript 3D Scene Initialization -->
+    <script>
+        // Lucide Icons Init
+        lucide.createIcons();
+
+        // Data for interactive pins
+        const areaData = {
+            'meja': {
+                title: 'Meja Eksperimen & Uji Coba',
+                badgeColor: '#f59e0b',
+                position: { x: -4, y: 1.5, z: 2 },
+                cameraPos: { x: -4, y: 3.8, z: 7 },
+                desc: 'Area kerja fisik utama bagi siswa untuk merakit purwarupa alat penjernih air, menguji kecepatan filtrasi, dan mengamati tingkat kejernihan air menggunakan alat ukur laboratorium.',
+                stem: 'Menerapkan sains fisika-kimia (filtrasi, sedimentasi, adsorpsi arang), teknologi alat ukur, dan rekayasa desain penjernih air bertingkat.',
+                assets: [
+                    'Meja Lab Panjang (Lab Workbench)',
+                    'Set Menara Filtrasi Air Berlayer',
+                    'Mikroskop Optik / Digital',
+                    'Set Gelas Kimia (Beaker) & Tabung Reaksi',
+                    'Wadah Penampung Hasil Uji Coba Air'
+                ]
+            },
+            'kolaborasi': {
+                title: 'Area Kolaborasi & Perancangan',
+                badgeColor: '#10b981',
+                position: { x: 4, y: 1.5, z: 2 },
+                cameraPos: { x: 4, y: 3.8, z: 7 },
+                desc: 'Tempat kerja kelompok (3-8 siswa) untuk mendesain sketsa proyek, melakukan riset digital pada komputer, membagi peran kelompok, dan mencatat data pengamatan pada papan tulis.',
+                stem: 'Mengasah kemampuan komunikasi, matematika (perhitungan debit & estimasi biaya), serta literasi digital dan rekayasa ide awal.',
+                assets: [
+                    'Set Meja Diskusi & Kursi Kayu',
+                    '2 Unit Dual Monitor Komputer / Desktop PC',
+                    'Papan Tulis Whiteboard Stand',
+                    'Laptop / Tablet Riset'
+                ]
+            },
+            'lemari': {
+                title: 'Lemari Penyimpanan Inventaris',
+                badgeColor: '#a855f7',
+                position: { x: 3.5, y: 2.8, z: -3.5 },
+                cameraPos: { x: 3.5, y: 3.8, z: 1.5 },
+                desc: 'Ruang penyimpanan terorganisir untuk menyimpan bahan baku eksperimen (pasir, kerikil, arang, botol bekas), perlengkapan keselamatan praktikum, dan komponen perkakas.',
+                stem: 'Melatih sikap Mindful (sadar & teratur) dalam mengelola inventaris, menjaga kerapian laboratorium, serta keamanan bahan.',
+                assets: [
+                    'Lemari Kayu Tinggi Pintu Ganda Interaktif',
+                    'Rak Komponen Berikat Label',
+                    'Box Kontainer Bahan Daur Ulang',
+                    'Perlengkapan K3 (Kacamata Lab, Sarung Tangan)'
+                ]
+            },
+            'troli': {
+                title: 'Troli Karya STEM Portabel',
+                badgeColor: '#f43f5e',
+                position: { x: -1.5, y: 1.2, z: -1 },
+                cameraPos: { x: -1.5, y: 3, z: 3.5 },
+                desc: 'Solusi mobile untuk sekolah tanpa laboratorium khusus. Troli berroda ini membawa peralatan potong, perekat, dan bahan daur ulang langsung dari kelas ke kelas secara fleksibel.',
+                stem: 'Penerapan prinsip Low Cost (Murah) & Easy (Mudah) - fleksibel dibawa ke mana saja untuk mendukung pembelajaran interdisipliner.',
+                assets: [
+                    'Troli Rak Berroda Berjalan (Utility Cart)',
+                    'Set Alat Potong (Gunting, Cutter)',
+                    'Lem Tembak (Glue Gun) & Lakban',
+                    'Kotak Bahan Daur Ulang (Botol, Sedotan, Stik)'
+                ]
+            }
+        };
+
+        // THREE.JS SETUP
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0f172a);
+        scene.fog = new THREE.FogExp2(0x0f172a, 0.022);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const initialCamPos = { x: 0, y: 12, z: 18 };
+        camera.position.set(initialCamPos.x, initialCamPos.y, initialCamPos.z);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxPolarAngle = Math.PI / 2 - 0.02;
+        controls.minDistance = 3;
+        controls.maxDistance = 35;
+        controls.target.set(0, 1.5, 0);
+
+        // LIGHTING
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xfffaed, 1.0);
+        dirLight.position.set(12, 20, 10);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        dirLight.shadow.bias = -0.0001;
+        scene.add(dirLight);
+
+        const pointLight1 = new THREE.PointLight(0x38bdf8, 1.2, 15);
+        pointLight1.position.set(-4, 4, 2);
+        scene.add(pointLight1);
+
+        const pointLight2 = new THREE.PointLight(0xf59e0b, 1.0, 15);
+        pointLight2.position.set(4, 4, 2);
+        scene.add(pointLight2);
+
+        // FLOOR & BACKDROP
+        const gridHelper = new THREE.GridHelper(30, 30, 0x3b82f6, 0x1e293b);
+        gridHelper.position.y = 0.01;
+        scene.add(gridHelper);
+
+        const floorGeo = new THREE.PlaneGeometry(30, 30);
+        const floorMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.8, metalness: 0.2 });
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.rotation.x = -Math.PI / 2;
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        const wallGeo = new THREE.PlaneGeometry(30, 12);
+        const wallMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.9 });
+        const backWall = new THREE.Mesh(wallGeo, wallMat);
+        backWall.position.set(0, 6, -6);
+        backWall.receiveShadow = true;
+        scene.add(backWall);
+
+        // HELPER MATERIALS
+        const metalMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.8, roughness: 0.3 });
+        const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.5, roughness: 0.1, transmission: 0.9 });
+        const waterMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, transparent: true, opacity: 0.85, roughness: 0.1 });
+
+        // --- ANIMATED 3D ATOM MODEL ABOVE CLASSROOM ---
+        const atomGroup = new THREE.Group();
+        atomGroup.position.set(0, 7.5, -2);
+        
+        const nucleus = new THREE.Mesh(new THREE.SphereGeometry(0.35, 16, 16), new THREE.MeshStandardMaterial({ color: 0xf59e0b, emissive: 0xd97706, emissiveIntensity: 0.6 }));
+        atomGroup.add(nucleus);
+
+        const ringGeom = new THREE.TorusGeometry(1.2, 0.02, 16, 64);
+        const ringMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+        
+        const ring1 = new THREE.Mesh(ringGeom, ringMat);
+        ring1.rotation.x = Math.PI / 3;
+        const ring2 = new THREE.Mesh(ringGeom, ringMat);
+        ring2.rotation.y = Math.PI / 3;
+        const ring3 = new THREE.Mesh(ringGeom, ringMat);
+        ring3.rotation.z = Math.PI / 3;
+        
+        atomGroup.add(ring1, ring2, ring3);
+
+        const electronGeom = new THREE.SphereGeometry(0.08, 12, 12);
+        const electronMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+        const electron1 = new THREE.Mesh(electronGeom, electronMat);
+        const electron2 = new THREE.Mesh(electronGeom, electronMat);
+        const electron3 = new THREE.Mesh(electronGeom, electronMat);
+        atomGroup.add(electron1, electron2, electron3);
+        scene.add(atomGroup);
+
+        // --- OBJECT 1: MEJA EKSPERIMEN WITH WATER FILTRATION SIMULATION ---
+        const mejaGroup = new THREE.Group();
+        mejaGroup.position.set(-4, 0, 2);
+
+        const topLab = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.2, 2.2), new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.4 }));
+        topLab.position.y = 1.2;
+        topLab.castShadow = true;
+        topLab.receiveShadow = true;
+        mejaGroup.add(topLab);
+
+        const legGeo = new THREE.BoxGeometry(0.15, 1.2, 0.15);
+        [[-2.1, 0.6, -0.9], [2.1, 0.6, -0.9], [-2.1, 0.6, 0.9], [2.1, 0.6, 0.9]].forEach(pos => {
+            const leg = new THREE.Mesh(legGeo, metalMat);
+            leg.position.set(...pos);
+            leg.castShadow = true;
+            mejaGroup.add(leg);
+        });
+
+        // Microscope
+        const microBase = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.08, 0.5), metalMat);
+        microBase.position.set(-1.4, 1.34, 0);
+        const microArm = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 0.6), metalMat);
+        microArm.position.set(-1.4, 1.6, -0.1);
+        microArm.rotation.x = 0.2;
+        const microScope = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.03, 0.4), new THREE.MeshStandardMaterial({ color: 0x0284c7 }));
+        microScope.position.set(-1.4, 1.7, 0.05);
+        microScope.rotation.x = -0.4;
+        mejaGroup.add(microBase, microArm, microScope);
+
+        // Water Filtration Tower
+        const filterFunnel = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.4, 16, 1, true), glassMat);
+        filterFunnel.rotation.x = Math.PI;
+        filterFunnel.position.set(0.3, 2.0, 0);
+
+        const filterStand = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.0), metalMat);
+        filterStand.position.set(0.6, 1.8, 0);
+        mejaGroup.add(filterFunnel, filterStand);
+
+        // Filter Layers (Pasir, Arang, Kerikil)
+        const layer1 = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.18, 0.1, 16), new THREE.MeshStandardMaterial({ color: 0x78350f })); // Sand
+        layer1.position.set(0.3, 2.1, 0);
+        const layer2 = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.12, 0.1, 16), new THREE.MeshStandardMaterial({ color: 0x1e293b })); // Charcoal
+        layer2.position.set(0.3, 2.0, 0);
+        mejaGroup.add(layer1, layer2);
+
+        // Beaker receiving clean water
+        const cleanBeaker = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.4, 16), glassMat);
+        cleanBeaker.position.set(0.3, 1.5, 0);
+        
+        // Rising clean water mesh
+        const cleanWater = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.1, 16), waterMat);
+        cleanWater.position.set(0.3, 1.35, 0);
+        mejaGroup.add(cleanBeaker, cleanWater);
+
+        // Animated Water Droplets
+        const waterDrops = [];
+        const dropGeom = new THREE.SphereGeometry(0.03, 8, 8);
+        for(let i = 0; i < 4; i++) {
+            const drop = new THREE.Mesh(dropGeom, waterMat);
+            drop.position.set(0.3, 1.8 - i * 0.12, 0);
+            mejaGroup.add(drop);
+            waterDrops.push(drop);
+        }
+
+        scene.add(mejaGroup);
+
+        // --- OBJECT 2: AREA KOLABORASI ---
+        const kolabGroup = new THREE.Group();
+        kolabGroup.position.set(4, 0, 2);
+
+        const deskTop = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.15, 2.4), new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.5 }));
+        deskTop.position.y = 1.1;
+        deskTop.castShadow = true;
+        kolabGroup.add(deskTop);
+
+        [[-1.9, 0.55, -1.0], [1.9, 0.55, -1.0], [-1.9, 0.55, 1.0], [1.9, 0.55, 1.0]].forEach(pos => {
+            const leg = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.1, 0.12), metalMat);
+            leg.position.set(...pos);
+            kolabGroup.add(leg);
+        });
+
+        // Animated Screen Texture Canvas
+        const screenCanvas = document.createElement('canvas');
+        screenCanvas.width = 256;
+        screenCanvas.height = 128;
+        const screenCtx = screenCanvas.getContext('2d');
+        const screenTexture = new THREE.CanvasTexture(screenCanvas);
+
+        // Monitors with live canvas screens
+        const screenMat = new THREE.MeshBasicMaterial({ map: screenTexture });
+        for(let i = -1; i <= 1; i += 2) {
+            const monStand = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.05, 0.3), metalMat);
+            monStand.position.set(i * 1.1, 1.2, -0.3);
+            const monPole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.3), metalMat);
+            monPole.position.set(i * 1.1, 1.35, -0.3);
+            const monScreen = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.55, 0.05), screenMat);
+            monScreen.position.set(i * 1.1, 1.6, -0.3);
+            kolabGroup.add(monStand, monPole, monScreen);
+        }
+
+        // Animated Wall Gears
+        const gearGroup = new THREE.Group();
+        gearGroup.position.set(0, 4.8, -1.8);
+        const gear1 = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.08, 8, 12), metalMat);
+        const gear2 = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.06, 8, 10), new THREE.MeshStandardMaterial({ color: 0xf59e0b }));
+        gear2.position.set(0.5, 0.3, 0);
+        gearGroup.add(gear1, gear2);
+        kolabGroup.add(gearGroup);
+
+        // Chairs around table
+        const chairMat = new THREE.MeshStandardMaterial({ color: 0x475569 });
+        [[-1.2, 0.9], [1.2, 0.9]].forEach(([x, z]) => {
+            const seat = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.08, 0.6), chairMat);
+            seat.position.set(x, 0.6, z);
+            const back = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.5, 0.08), chairMat);
+            back.position.set(x, 0.9, z + 0.26);
+            kolabGroup.add(seat, back);
+        });
+
+        // Whiteboard Behind
+        const wbFrame = new THREE.Mesh(new THREE.BoxGeometry(3.5, 2.0, 0.08), metalMat);
+        wbFrame.position.set(0, 3.2, -1.8);
+        const wbSurface = new THREE.Mesh(new THREE.PlaneGeometry(3.3, 1.8), new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.2 }));
+        wbSurface.position.set(0, 3.2, -1.73);
+        kolabGroup.add(wbFrame, wbSurface);
+
+        scene.add(kolabGroup);
+
+        // --- OBJECT 3: LEMARI PENYIMPANAN WITH INTERACTIVE OPENING DOORS ---
+        const lemariGroup = new THREE.Group();
+        lemariGroup.position.set(3.5, 0, -3.5);
+
+        const cabBody = new THREE.Mesh(new THREE.BoxGeometry(3.2, 4.5, 1.4), new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.7 }));
+        cabBody.position.y = 2.25;
+        cabBody.castShadow = true;
+        lemariGroup.add(cabBody);
+
+        // Shelves Inside
+        const shelfMat = new THREE.MeshStandardMaterial({ color: 0x451a03 });
+        for(let y of [1.2, 2.2, 3.2]) {
+            const shelf = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.08, 1.2), shelfMat);
+            shelf.position.set(0, y, 0.05);
+            lemariGroup.add(shelf);
+        }
+
+        // Swinging Left & Right Doors
+        const doorGeo = new THREE.BoxGeometry(1.5, 4.3, 0.08);
+        const doorMat = new THREE.MeshStandardMaterial({ color: 0x92400e, roughness: 0.6 });
+
+        const leftDoorPivot = new THREE.Group();
+        leftDoorPivot.position.set(-1.5, 2.25, 0.7);
+        const leftDoor = new THREE.Mesh(doorGeo, doorMat);
+        leftDoor.position.set(0.75, 0, 0);
+        leftDoorPivot.add(leftDoor);
+
+        const rightDoorPivot = new THREE.Group();
+        rightDoorPivot.position.set(1.5, 2.25, 0.7);
+        const rightDoor = new THREE.Mesh(doorGeo, doorMat);
+        rightDoor.position.set(-0.75, 0, 0);
+        rightDoorPivot.add(rightDoor);
+
+        lemariGroup.add(leftDoorPivot, rightDoorPivot);
+        scene.add(lemariGroup);
+
+        let isCabinetOpen = false;
+
+        window.toggleCabinetDoors = function() {
+            isCabinetOpen = !isCabinetOpen;
+            document.getElementById('cabinet-btn-text').textContent = isCabinetOpen ? 'Tutup Lemari' : 'Buka Lemari';
+        };
+
+        // --- OBJECT 4: TROLI KARYA PORTABEL WITH MOTION ANIMATION ---
+        const troliGroup = new THREE.Group();
+        troliGroup.position.set(-1.5, 0, -1);
+
+        const cartBody = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.2, 1.0), new THREE.MeshStandardMaterial({ color: 0xbe123c, roughness: 0.5 }));
+        cartBody.position.y = 1.0;
+        cartBody.castShadow = true;
+        troliGroup.add(cartBody);
+
+        // Cart wheels
+        const cartWheels = [];
+        [[-0.6, -0.4], [0.6, -0.4], [-0.6, 0.4], [0.6, 0.4]].forEach(([x, z]) => {
+            const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.1, 16), metalMat);
+            wheel.rotation.z = Math.PI / 2;
+            wheel.position.set(x, 0.15, z);
+            troliGroup.add(wheel);
+            cartWheels.push(wheel);
+        });
+
+        // Top handle & supplies
+        const handleBar = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.8), metalMat);
+        handleBar.rotation.x = Math.PI / 2;
+        handleBar.position.set(-0.85, 1.6, 0);
+        troliGroup.add(handleBar);
+
+        // Supplies on trolley
+        const box1 = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 0.4), new THREE.MeshStandardMaterial({ color: 0xf59e0b }));
+        box1.position.set(0.2, 1.75, 0.2);
+        const box2 = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.25, 0.4), new THREE.MeshStandardMaterial({ color: 0x0284c7 }));
+        box2.position.set(-0.3, 1.72, -0.1);
+        troliGroup.add(box1, box2);
+
+        scene.add(troliGroup);
+
+        let isTrolleyMoving = false;
+        let trolleyDir = 1;
+
+        window.triggerTrolleyMove = function() {
+            isTrolleyMoving = !isTrolleyMoving;
+        };
+
+        let isWaterFlowing = true;
+        window.toggleWaterFlow = function() {
+            isWaterFlowing = !isWaterFlowing;
+            document.getElementById('water-btn-text').textContent = isWaterFlowing ? 'Hentikan Air' : 'Simulasi Air Drip';
+        };
+
+        // DYNAMIC FLOATING PARTICLES IN ATMOSPHERE
+        const particleCount = 60;
+        const particleGeo = new THREE.BufferGeometry();
+        const particlePos = new Float32Array(particleCount * 3);
+        for(let i = 0; i < particleCount * 3; i += 3) {
+            particlePos[i] = (Math.random() - 0.5) * 20;
+            particlePos[i+1] = Math.random() * 8 + 0.5;
+            particlePos[i+2] = (Math.random() - 0.5) * 20;
+        }
+        particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
+        const particleMat = new THREE.PointsMaterial({ color: 0x38bdf8, size: 0.08, transparent: true, opacity: 0.6 });
+        const particleSystem = new THREE.Points(particleGeo, particleMat);
+        scene.add(particleSystem);
+
+        // CAMERA ANIMATION & AUTO TOUR
+        let targetCamPos = { ...initialCamPos };
+        let targetLookAt = { x: 0, y: 1.5, z: 0 };
+        let isAnimating = false;
+
+        let autoTourActive = false;
+        let autoTourTimer = null;
+        const tourKeys = ['overview', 'meja', 'kolaborasi', 'lemari', 'troli'];
+        let currentTourIdx = 0;
+
+        window.toggleAutoTour = function() {
+            autoTourActive = !autoTourActive;
+            const btnText = document.getElementById('tour-btn-text');
+            if (autoTourActive) {
+                btnText.textContent = 'Stop Tour';
+                runNextTourStep();
+            } else {
+                btnText.textContent = 'Tour Otomatis';
+                clearTimeout(autoTourTimer);
+                focusArea('overview');
+            }
+        };
+
+        function runNextTourStep() {
+            if (!autoTourActive) return;
+            const key = tourKeys[currentTourIdx];
+            focusArea(key);
+            currentTourIdx = (currentTourIdx + 1) % tourKeys.length;
+            autoTourTimer = setTimeout(runNextTourStep, 5000);
+        }
+
+        function animateCamera() {
+            if (!isAnimating) return;
+
+            camera.position.x += (targetCamPos.x - camera.position.x) * 0.05;
+            camera.position.y += (targetCamPos.y - camera.position.y) * 0.05;
+            camera.position.z += (targetCamPos.z - camera.position.z) * 0.05;
+
+            controls.target.x += (targetLookAt.x - controls.target.x) * 0.05;
+            controls.target.y += (targetLookAt.y - controls.target.y) * 0.05;
+            controls.target.z += (targetLookAt.z - controls.target.z) * 0.05;
+
+            controls.update();
+
+            const dist = Math.hypot(
+                targetCamPos.x - camera.position.x,
+                targetCamPos.y - camera.position.y,
+                targetCamPos.z - camera.position.z
+            );
+
+            if (dist < 0.05) {
+                isAnimating = false;
+            }
+        }
+
+        window.focusArea = function(key) {
+            if (key === 'overview') {
+                targetCamPos = { ...initialCamPos };
+                targetLookAt = { x: 0, y: 1.5, z: 0 };
+                closeDrawer();
+            } else if (areaData[key]) {
+                const data = areaData[key];
+                targetCamPos = data.cameraPos;
+                targetLookAt = data.position;
+                openDrawer(key);
+            }
+            isAnimating = true;
+        };
+
+        // ANNOTATION MARKERS UPDATER
+        const pin1 = document.getElementById('pin-1');
+        const pin2 = document.getElementById('pin-2');
+        const pin3 = document.getElementById('pin-3');
+        const pin4 = document.getElementById('pin-4');
+
+        const pinElements = [
+            { el: pin1, key: 'meja', pos: mejaGroup.position },
+            { el: pin2, key: 'kolaborasi', pos: kolabGroup.position },
+            { el: pin3, key: 'lemari', pos: lemariGroup.position },
+            { el: pin4, key: 'troli', pos: troliGroup.position }
+        ];
+
+        pinElements.forEach(item => {
+            item.el.addEventListener('click', (e) => {
+                e.stopPropagation();
+                focusArea(item.key);
+            });
+        });
+
+        function updatePinPositions() {
+            const tempV = new THREE.Vector3();
+
+            pinElements.forEach(item => {
+                tempV.copy(item.pos);
+                tempV.y += item.key === 'lemari' ? 4.6 : 2.5;
+                tempV.project(camera);
+
+                if (tempV.z > 1) {
+                    item.el.style.display = 'none';
+                    return;
+                }
+
+                const x = (tempV.x * .5 + .5) * window.innerWidth;
+                const y = (tempV.y * -.5 + .5) * window.innerHeight;
+
+                item.el.style.display = 'flex';
+                item.el.style.left = `${x}px`;
+                item.el.style.top = `${y}px`;
+            });
+        }
+
+        // DRAWER / MODAL LOGIC
+        const drawer = document.getElementById('info-drawer');
+        const drawerTitle = document.getElementById('drawer-title');
+        const drawerBadge = document.getElementById('drawer-badge');
+        const drawerDesc = document.getElementById('drawer-desc');
+        const drawerStem = document.getElementById('drawer-stem');
+        const drawerAssets = document.getElementById('drawer-assets');
+
+        function openDrawer(key) {
+            const data = areaData[key];
+            if (!data) return;
+
+            drawerTitle.textContent = data.title;
+            drawerBadge.style.backgroundColor = data.badgeColor;
+            drawerDesc.textContent = data.desc;
+            drawerStem.textContent = data.stem;
+
+            drawerAssets.innerHTML = '';
+            data.assets.forEach(asset => {
+                const li = document.createElement('li');
+                li.className = 'flex items-center gap-2 bg-slate-800/80 p-2 rounded-lg border border-slate-700/40';
+                li.innerHTML = `<i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400 shrink-0"></i> <span>${asset}</span>`;
+                drawerAssets.appendChild(li);
+            });
+            lucide.createIcons();
+
+            drawer.classList.remove('translate-x-full');
+        }
+
+        function closeDrawer() {
+            drawer.classList.add('translate-x-full');
+        }
+
+        document.getElementById('btn-close-drawer').addEventListener('click', closeDrawer);
+
+        // GUIDE MODAL LOGIC
+        const modalGuide = document.getElementById('modal-guide');
+        document.getElementById('btn-guide').addEventListener('click', () => modalGuide.classList.remove('hidden'));
+        document.getElementById('btn-close-modal').addEventListener('click', () => modalGuide.classList.add('hidden'));
+        document.getElementById('btn-close-modal-2').addEventListener('click', () => modalGuide.classList.add('hidden'));
+
+        document.getElementById('btn-reset-cam').addEventListener('click', () => {
+            focusArea('overview');
+        });
+
+        let time = 0;
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.03;
+
+            // 1. Rotate Atom Electrons & Nucleus
+            ring1.rotation.z += 0.02;
+            ring2.rotation.x += 0.02;
+            ring3.rotation.y += 0.02;
+
+            electron1.position.x = Math.cos(time * 2) * 1.2;
+            electron1.position.y = Math.sin(time * 2) * 1.2;
+
+            electron2.position.y = Math.cos(time * 2.5) * 1.2;
+            electron2.position.z = Math.sin(time * 2.5) * 1.2;
+
+            electron3.position.x = Math.cos(time * 1.8) * 1.2;
+            electron3.position.z = Math.sin(time * 1.8) * 1.2;
+
+            // 2. Animated Water Drops (Filtration)
+            if (isWaterFlowing) {
+                waterDrops.forEach((drop, idx) => {
+                    drop.position.y -= 0.015;
+                    if (drop.position.y < 1.35) {
+                        drop.position.y = 1.9;
+                    }
+                });
+                cleanWater.scale.y = 1 + Math.sin(time * 3) * 0.08;
+            }
+
+            // 3. Animated Monitor Screen Canvas
+            screenCtx.fillStyle = '#0f172a';
+            screenCtx.fillRect(0, 0, 256, 128);
+            screenCtx.fillStyle = '#38bdf8';
+            screenCtx.font = 'bold 16px sans-serif';
+            screenCtx.fillText('STEM DATA MONITOR', 15, 30);
+            
+            screenCtx.strokeStyle = '#10b981';
+            screenCtx.lineWidth = 3;
+            screenCtx.beginPath();
+            for(let x = 0; x < 256; x += 20) {
+                screenCtx.lineTo(x, 70 + Math.sin((x + time * 50) * 0.05) * 20);
+            }
+            screenCtx.stroke();
+            screenTexture.needsUpdate = true;
+
+            // 4. Wall Gears Rotation
+            gear1.rotation.z += 0.02;
+            gear2.rotation.z -= 0.03;
+
+            // 5. Cabinet Doors Animation Interpolation
+            const targetDoorAngle = isCabinetOpen ? -Math.PI * 0.65 : 0;
+            leftDoorPivot.rotation.y += (targetDoorAngle - leftDoorPivot.rotation.y) * 0.1;
+            rightDoorPivot.rotation.y += (-targetDoorAngle - rightDoorPivot.rotation.y) * 0.1;
+
+            // 6. Trolley Moving Animation
+            if (isTrolleyMoving) {
+                troliGroup.position.x += 0.02 * trolleyDir;
+                cartWheels.forEach(w => w.rotation.x += 0.1 * trolleyDir);
+                if (troliGroup.position.x > 1.0 || troliGroup.position.x < -3.5) {
+                    trolleyDir *= -1;
+                }
+            }
+
+            // 7. Ambient Particle Movement
+            const posAttr = particleGeo.attributes.position;
+            for(let i = 1; i < particleCount * 3; i += 3) {
+                posAttr.array[i] += 0.01;
+                if (posAttr.array[i] > 8.5) posAttr.array[i] = 0.5;
+            }
+            posAttr.needsUpdate = true;
+
+            animateCamera();
+            controls.update();
+            updatePinPositions();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // RESIZE HANDLER
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
